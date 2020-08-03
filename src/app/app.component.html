@@ -1,0 +1,27 @@
+<button (click)="startTask()">START</button>
+<button (click)="resetTask()">RESET</button>
+<button (click)="cancelTask()">CANCEL</button>
+<p>
+<div>
+  <input [(ngModel)]=progressStep> Progress step
+</div> 
+<div>
+  <input [(ngModel)]=postTaskDelay> Create delay in ms
+</div> 
+<div>
+  <input [(ngModel)]=getTaskByGuidDelay> Update delay in ms
+</div> 
+<div>
+  <input [(ngModel)]=postCancelTaskDelay> Cancel delay in ms
+</div> 
+<button (click)="configure()">CONFIGURE</button>
+<p>
+<div>{{ message }}</div>
+<p>
+<div>ServiceAction {{ serviceActionCounter }}x</div>
+<div>TaskUpdated {{ onTaskUpdatedCounter }}x</div>
+<div>SuccessAction {{ successActionCounter }}x</div>
+<div>TaskFailed {{ onTaskFailedCounter }}x</div>
+<div>ConnectionClosed {{ onConnectionClosedCounter }}x</div>
+<p>
+<longRunningTask [task$]=sampleTask$></longRunningTask>
