@@ -25,4 +25,6 @@
 <div>TaskFailed {{ onTaskFailedCounter }}x</div>
 <div>ConnectionClosed {{ onConnectionClosedCounter }}x</div>
 <p>
-<longRunningTask [task$]=sampleTask$></longRunningTask>
+<div *ngFor="let task of tasks">
+  <longRunningTask [task$]=getTT(task)></longRunningTask>
+</div>

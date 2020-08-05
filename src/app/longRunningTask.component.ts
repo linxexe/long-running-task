@@ -5,8 +5,10 @@ import { Observable } from 'rxjs';
 @Component({
   selector: 'longRunningTask',
   template: `<div *ngIf="(task$ | async) as task">
-    <h1>Status: {{task.status}}</h1>
-    <h1 *ngIf=task.progressInfo>Percentage: {{task.progressInfo.progressValueInPercentage}}</h1>
+    <h1>Task Id: {{task.guid}}</h1>
+    <h2>Status: {{task.status}}</h2>
+    <progress [value]="task.progressInfo.progressValueInPercentage" max="100"> {{task.progressInfo.progressValueInPercentage}}% </progress>
+    <h3 *ngIf=task.progressInfo>Percentage: {{task.progressInfo.progressValueInPercentage}}</h3>
   </div>`,
   styles: [`h1 { font-family: Lato; }`]
 })

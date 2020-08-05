@@ -21,6 +21,7 @@ export class AppComponent  {
     errorMessage: '',
   };
   public sampleTask$ = new BehaviorSubject<ILongRunningTaskDto>(null);
+  public tasks: { [id: string] : BehaviorSubject<ILongRunningTaskDto> } = {};
   public serviceActionCounter = 0;
   public onTaskUpdatedCounter = 0;
   public successActionCounter = 0;
@@ -45,6 +46,10 @@ export class AppComponent  {
     );
   }
 
+  public getTT(a: any) {
+    return a;
+  }
+
   public startTask() {
     this.configure();
     this.message = 'CREATING TASK';
@@ -65,6 +70,7 @@ export class AppComponent  {
     this.onTaskFailedCounter = 0;
     this.onConnectionClosedCounter = 0;
     this.sampleTask$.next(null);
+    this.tasks = {};
     this.taskService.resetTask();
   }
 
@@ -85,19 +91,19 @@ export class AppComponent  {
 
   successCallback(task: ILongRunningTaskDto) {
     this.successActionCounter = this.successActionCounter + 1;
-    this.sampleTask$.next(task);
+    this.updateTask(task);
     this.message = 'TASK COMPLETED';
   }
 
   onTaskUpdatedAction(task: ILongRunningTaskDto) {
     this.onTaskUpdatedCounter = this.onTaskUpdatedCounter + 1;
-    this.sampleTask$.next(task);
+    this.updateTask(task);
     this.message = 'CHECKING TASK STATUS';
   }
 
   onFailedAction(task: ILongRunningTaskDto) {
     this.onTaskFailedCounter = this.onTaskFailedCounter + 1;
-    this.sampleTask$.next(task);
+    this.updateTask(task);
     this.message = 'TASK FAILED';
   }
 
@@ -105,5 +111,15 @@ export class AppComponent  {
     this.onConnectionClosedCounter = this.onConnectionClosedCounter + 1;
     // this.sampleTask$.next(task);
     this.message = 'CONNECTION CLOSED: ' + JSON.stringify(error);
+  }
+
+  private updateTask(task: ILongRunningTaskDto) {
+    const task$ = this.tasks[task.guid];
+    if(task$) {
+      task$.next(task);
+    } else {
+      this.tasks[task.guid] = new BehaviorSubject<ILongRunningTaskDto>(task);
+    }
+    this.sampleTask$.next(task);
   }
 }
