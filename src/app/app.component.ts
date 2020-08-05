@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { formatDate } from '@angular/common';
 import { Observable, BehaviorSubject, of } from 'rxjs';
 import { delay, tap } from 'rxjs/operators';
 import { LongRunningTaskService } from './long-running-task.service';
@@ -11,7 +12,7 @@ import { ILongRunningTaskDto, IProgressInfo } from './long-running-task.model';
   styleUrls: [ './app.component.css' ]
 })
 export class AppComponent  {
-  public message = null;
+  public messages: string[] = [];
   public sampleTask: ILongRunningTaskDto = {
     guid: 'guid',
     status: 'Pending',
@@ -49,7 +50,7 @@ export class AppComponent  {
 
   public startTask() {
     this.configure();
-    this.message = 'CREATING TASK';
+    this.log('CREATING TASK');
     this.taskService.beginCall(
       this.serviceAction.bind(this),
       this.successCallback.bind(this),
@@ -60,7 +61,7 @@ export class AppComponent  {
   }
 
   public resetTask() {
-    this.message = '';
+    this.messages = [];
     this.serviceActionCounter = 0;
     this.onTaskUpdatedCounter = 0;
     this.successActionCounter = 0;
@@ -75,9 +76,9 @@ export class AppComponent  {
     this.taskApi.throw();
   }
 
-  public cancelTask() {
-    this.message = 'CANCELING TASK';
-    this.taskService.cancelTask('guid');
+  public cancelTask(guid: string) {
+    this.log(`CANCELING ${guid} TASK`);
+    this.taskService.cancelTask(guid);
   }
 
   serviceAction(): Observable<ILongRunningTaskDto> {
@@ -89,34 +90,42 @@ export class AppComponent  {
   successCallback(task: ILongRunningTaskDto) {
     this.successActionCounter = this.successActionCounter + 1;
     this.updateTask(task);
-    this.message = 'TASK COMPLETED';
+    this.log(`TASK ${task.guid} COMPLETED`);
   }
 
   onTaskUpdatedAction(task: ILongRunningTaskDto) {
     this.onTaskUpdatedCounter = this.onTaskUpdatedCounter + 1;
     this.updateTask(task);
-    this.message = 'CHECKING TASK STATUS';
+    this.log(`CHECKING TASK ${task.guid} STATUS`);
   }
 
   onFailedAction(task: ILongRunningTaskDto) {
     this.onTaskFailedCounter = this.onTaskFailedCounter + 1;
     this.updateTask(task);
-    this.message = 'TASK FAILED';
+    this.log(`TASK ${task.guid} FAILED`);
   }
 
   onConnectionClosedAction(error: any) {
     this.onConnectionClosedCounter = this.onConnectionClosedCounter + 1;
     // this.sampleTask$.next(task);
-    this.message = 'CONNECTION CLOSED: ' + JSON.stringify(error);
+    this.log('CONNECTION CLOSED: ' + JSON.stringify(error));
   }
 
   private updateTask(task: ILongRunningTaskDto) {
-    const task$ = this.tasks.find(t => t.id === task.guid).task$;
-    if(task$) {
-      task$.next(task);
+    const t = this.tasks.find(t => t.id === task.guid);
+    if(t) {
+      t.task$.next(task);
     } else {
       this.tasks.push({id: task.guid, task$: new BehaviorSubject<ILongRunningTaskDto>(task)});
     }
     this.sampleTask$.next(task);
+  }
+
+  private log(message: string) {
+    const msg = `[${formatDate(new Date(), 'mm:ss.SSS', 'en')}] ${message}`;
+    if(this.messages.push(msg) >= 10) {
+      this.messages.shift();
+      this.messages.pop();
+    }
   }
 }

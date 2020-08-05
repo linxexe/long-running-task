@@ -28,7 +28,7 @@ export class LongRunningTaskService implements OnDestroy {
   private readonly StartOffsetInMiliseconds = 250;
   private readonly MaxIntervalBetweenCallsInMiliseconds = 1000;
   // private readonly timer$ = timer(this.StartOffsetInMiliseconds, this.IntervalBetweenCallsInMiliseconds);
-  private stopPolling = new Subject();
+  private reset$ = new Subject();
   private startDate: Date = null;
 
   constructor(private api: LongRunningTaskApiService) { }
@@ -38,7 +38,7 @@ export class LongRunningTaskService implements OnDestroy {
   }
 
   public resetTask(): void {
-    this.stopPolling.next();
+    this.reset$.next();
     this.api.resetTask();
   }
 
@@ -78,6 +78,7 @@ export class LongRunningTaskService implements OnDestroy {
 
     
     // Repeat
+    const stopPolling = new Subject();
     const interval$ = new BehaviorSubject(1);
     let reuestTimestamp = 0;
     const task$ = serviceAction().pipe(
@@ -100,7 +101,7 @@ export class LongRunningTaskService implements OnDestroy {
           repeat(),
         ),
       ),
-      takeUntil(this.stopPolling),
+      takeUntil(stopPolling),
     );
 
     // // Timer
@@ -141,13 +142,13 @@ export class LongRunningTaskService implements OnDestroy {
       } else if (this.successCondition(t)) {
         this.log(`successCallback task: ${t.guid}`, 'Subscription')
         successCallback(t);
-        this.stopPolling.next();
+        stopPolling.next();
       } else if (this.failedCondition(t)) {
         this.log(`failedCondition task: ${t.guid}`, 'Subscription')
         onFailedAction(t);
-        this.stopPolling.next();
+        stopPolling.next();
       } else if (this.cancelledCondition(t)) {
-        this.stopPolling.next();
+        stopPolling.next();
       } else {
         this.log(`onTaskUpdatedAction task: ${t.guid}`, 'Subscription')
         onTaskUpdatedAction(t);
@@ -156,6 +157,9 @@ export class LongRunningTaskService implements OnDestroy {
       this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
       onConnectionClosedAction(error);
     });
+
+
+    this.reset$.subscribe(() => stopPolling.next);
   }
 
   private log(message: string, type: string = null) {
