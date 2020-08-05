@@ -29,7 +29,11 @@
 </div>
 <p>
 <span *ngFor="let task of tasks">
-  <longRunningTask [task$]=task.task$ [cancel]=cancelTask.bind(this)></longRunningTask>
+  <longRunningTask 
+    [task$]=task.task$
+    [cancel]=cancelTask.bind(this)
+    [(color)]=task.color>
+  </longRunningTask>
 </span>
 <div style="position: absolute; bottom: 10px;">
   <div *ngFor="let message of messages" style="font-weight: 8px;">{{ message }}</div>

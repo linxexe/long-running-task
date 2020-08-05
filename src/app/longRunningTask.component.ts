@@ -15,6 +15,7 @@ import { Observable } from 'rxjs';
     </div>
   </div>`,
   styles: [`.container {
+  background-color: aliceblue;
   display: inline-block;
   border: black;
   border-style: double;
@@ -25,6 +26,7 @@ import { Observable } from 'rxjs';
 export class LongRunningTaskComponent {
   @Input() task$: any;
   @Input() cancel: Function;
+  @Input() color: string;
 
   cancelTask() {
     this.cancel(this.task$.value.guid);

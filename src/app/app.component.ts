@@ -23,7 +23,7 @@ export class AppComponent  {
     error: null,
   };
   public sampleTask$ = new BehaviorSubject<ILongRunningTaskDto>(null);
-  public tasks: { id: string, task$: BehaviorSubject<ILongRunningTaskDto> }[] = [];
+  public tasks: { id: string, color: string, task$: BehaviorSubject<ILongRunningTaskDto> }[] = [];
   public serviceActionCounter = 0;
   public onTaskUpdatedCounter = 0;
   public successActionCounter = 0;
@@ -89,7 +89,7 @@ export class AppComponent  {
 
   successCallback(task: ILongRunningTaskDto) {
     this.successActionCounter = this.successActionCounter + 1;
-    this.updateTask(task);
+    this.updateTask(task, 'palegreen');
     this.log(`TASK ${task.guid} COMPLETED`);
   }
 
@@ -111,12 +111,19 @@ export class AppComponent  {
     this.log('CONNECTION CLOSED: ' + JSON.stringify(error));
   }
 
-  private updateTask(task: ILongRunningTaskDto) {
+  private updateTask(task: ILongRunningTaskDto, color: string = null) {
     const t = this.tasks.find(t => t.id === task.guid);
     if(t) {
       t.task$.next(task);
     } else {
-      this.tasks.push({id: task.guid, task$: new BehaviorSubject<ILongRunningTaskDto>(task)});
+      this.tasks.push({
+        id: task.guid,
+        color: 'aliceblue',
+        task$: new BehaviorSubject<ILongRunningTaskDto>(task),
+      });
+    }
+    if(color) {
+      t.color = color;
     }
     this.sampleTask$.next(task);
   }
