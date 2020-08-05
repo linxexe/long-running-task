@@ -19,9 +19,10 @@ export class AppComponent  {
     creationTime: 'creationTime',
     ebtity: '',
     errorMessage: '',
+    error: null,
   };
   public sampleTask$ = new BehaviorSubject<ILongRunningTaskDto>(null);
-  public tasks: { [id: string] : BehaviorSubject<ILongRunningTaskDto> } = {};
+  public tasks: { id: string, task$: BehaviorSubject<ILongRunningTaskDto> }[] = [];
   public serviceActionCounter = 0;
   public onTaskUpdatedCounter = 0;
   public successActionCounter = 0;
@@ -46,10 +47,6 @@ export class AppComponent  {
     );
   }
 
-  public getTT(a: any) {
-    return a;
-  }
-
   public startTask() {
     this.configure();
     this.message = 'CREATING TASK';
@@ -70,7 +67,7 @@ export class AppComponent  {
     this.onTaskFailedCounter = 0;
     this.onConnectionClosedCounter = 0;
     this.sampleTask$.next(null);
-    this.tasks = {};
+    this.tasks = [];
     this.taskService.resetTask();
   }
 
@@ -114,11 +111,11 @@ export class AppComponent  {
   }
 
   private updateTask(task: ILongRunningTaskDto) {
-    const task$ = this.tasks[task.guid];
+    const task$ = this.tasks.find(t => t.id === task.guid).task$;
     if(task$) {
       task$.next(task);
     } else {
-      this.tasks[task.guid] = new BehaviorSubject<ILongRunningTaskDto>(task);
+      this.tasks.push({id: task.guid, task$: new BehaviorSubject<ILongRunningTaskDto>(task)});
     }
     this.sampleTask$.next(task);
   }

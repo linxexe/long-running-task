@@ -26,5 +26,5 @@
 <div>ConnectionClosed {{ onConnectionClosedCounter }}x</div>
 <p>
 <div *ngFor="let task of tasks">
-  <longRunningTask [task$]=getTT(task)></longRunningTask>
+  <longRunningTask [task$]=task.task$></longRunningTask>
 </div>
