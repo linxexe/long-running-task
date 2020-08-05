@@ -27,6 +27,7 @@
   <div>TaskFailed {{ onTaskFailedCounter }}x</div>
   <div>ConnectionClosed {{ onConnectionClosedCounter }}x</div>
 </div>
+<p>
 <span *ngFor="let task of tasks">
   <longRunningTask [task$]=task.task$ [cancel]=cancelTask.bind(this)></longRunningTask>
 </span>
