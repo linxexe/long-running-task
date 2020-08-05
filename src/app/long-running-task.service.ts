@@ -1,8 +1,23 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { formatDate } from '@angular/common';
-import { timer, Subject, Observable } from 'rxjs';
+import { timer, Subject, BehaviorSubject, Observable, of, interval, throwError } from 'rxjs';
+import {
+  switchMap,
+  retry,
+  share,
+  takeUntil,
+  tap,
+  delay,
+  delayWhen,
+  windowTime,
+  mergeAll,
+  mergeMap,
+  repeat,
+  withLatestFrom,
+  timeInterval,
+  catchError,
+} from 'rxjs/operators';
 import { LongRunningTaskApiService } from './long-running-task-api.service';
-import { switchMap, retry, share, takeUntil, tap, delay, windowTime, mergeAll } from 'rxjs/operators';
 import { ILongRunningTaskDto } from './long-running-task.model';
 
 @Injectable({
@@ -11,8 +26,8 @@ import { ILongRunningTaskDto } from './long-running-task.model';
 export class LongRunningTaskService implements OnDestroy {
 
   private readonly StartOffsetInMiliseconds = 250;
-  private readonly IntervalBetweenCallsInMiliseconds = 1000;
-  private readonly timer$ = timer(this.StartOffsetInMiliseconds, this.IntervalBetweenCallsInMiliseconds);
+  private readonly MaxIntervalBetweenCallsInMiliseconds = 1000;
+  // private readonly timer$ = timer(this.StartOffsetInMiliseconds, this.IntervalBetweenCallsInMiliseconds);
   private stopPolling = new Subject();
   private startDate: Date = null;
 
@@ -27,6 +42,13 @@ export class LongRunningTaskService implements OnDestroy {
     this.api.resetTask();
   }
 
+  private calculateNextInterval(interval: BehaviorSubject<number>, timestamp: number): void {
+    const responseTime = Math.round(performance.now() - timestamp);
+    const intervalBetweenCallsInMiliseconds = responseTime < this.MaxIntervalBetweenCallsInMiliseconds
+     ? this.MaxIntervalBetweenCallsInMiliseconds - responseTime : 1;
+    interval.next(intervalBetweenCallsInMiliseconds);
+  }
+
   public beginCall(
     serviceAction: () => Observable<ILongRunningTaskDto>,
     successCallback: (task: ILongRunningTaskDto) => any,
@@ -35,35 +57,88 @@ export class LongRunningTaskService implements OnDestroy {
     onConnectionClosedAction: (error: any) => any,
   ): void {
     this.log(`serviceAction task: ????`, 'Request');
-    const task$ = serviceAction().pipe(
-      tap(t => this.log(`serviceAction task: ${t.guid}`, 'Response')),
-      switchMap(task =>
-        this.timer$.pipe(
-          switchMap(tm => {
-            this.log(`getTaskByGuid(${tm}) task: ${task.guid}`, 'Request');
-            return this.api.getTaskByGuid(task.guid).pipe(tap(t => this.log(`getTaskByGuid(${tm}) task: ${task.guid}`, 'Response')));
-          }),
-          retry(),
-          share(),
-          takeUntil(this.stopPolling),
-        )));
 
-    const taskz$ = serviceAction().pipe(
-      tap(t => this.log(`serviceAction task: ${t.guid}`)),
-      switchMap(task =>
-        this.api.getTaskByGuid(task.guid).pipe(
-          windowTime(1000),
-          tap(t => this.log(`task: ${task.guid}`, 'Request')),
-          retry(),
-          share(),
-          mergeAll(),
-          takeUntil(this.stopPolling),
-        )));
-        
-        //windowTime(3000),
+    // Final without logs
+    // const interval$ = new BehaviorSubject(1);
+    // let reuestTimestamp = 0;
+    // const task$ = serviceAction().pipe(
+    //   switchMap(task => of({})
+    //     .pipe(
+    //       withLatestFrom(interval$),
+    //       delayWhen(i => timer(i[1])),
+    //       tap(_ => reuestTimestamp = performance.now()),
+    //       mergeMap(i => this.api.getTaskByGuid(task.guid)
+    //         .pipe(tap(_ => this.calculateNextInterval(interval$, reuestTimestamp))),
+    //       ),
+    //       repeat(),
+    //     ),
+    //   ),
+    //   takeUntil(this.stopPolling),
+    // );
+
+    
+    // Repeat
+    const interval$ = new BehaviorSubject(1);
+    let reuestTimestamp = 0;
+    const task$ = serviceAction().pipe(
+      tap(task => this.log(`serviceAction task: ${task.guid}`, 'Response')),
+      switchMap(task => of({})
+        .pipe(
+          withLatestFrom(interval$),
+          tap(i => this.log(`Start waiting: ${i[1]}`, 'Pause')),
+          delayWhen(i => timer(i[1])),
+          tap(_ => this.log(`Stop waiting`, 'Pause')),
+          tap(_ => this.log(`getTaskByGuid task: ${task.guid}`, 'Request')),
+          tap(_ => reuestTimestamp = performance.now()),
+          mergeMap(i => this.api.getTaskByGuid(task.guid)
+            .pipe(
+              tap(_ => this.log(`getTaskByGuid task: ${task.guid}`, 'Response')),
+              tap(_ => this.calculateNextInterval(interval$, reuestTimestamp)),
+              catchError(e => of({...task, error: e})),
+            ),
+          ),
+          repeat(),
+        ),
+      ),
+      takeUntil(this.stopPolling),
+    );
+
+    // // Timer
+    // const task$ = serviceAction().pipe(
+    //   tap(t => this.log(`serviceAction task: ${t.guid}`, 'Response')),
+    //   switchMap(task =>
+    //     this.timer$.pipe(
+    //       switchMap(tm => {
+    //         this.log(`getTaskByGuid(${tm}) task: ${task.guid}`, 'Request');
+    //         return this.api.getTaskByGuid(task.guid).pipe(tap(t => this.log(`getTaskByGuid(${tm}) task: ${task.guid}`, 'Response')));
+    //       }),
+    //       retry(),
+    //       share(),
+    //       takeUntil(this.stopPolling),
+    //     )
+    //   )
+    // );
+
+    // // Window
+    // const task$ = serviceAction().pipe(
+    //   tap(t => this.log(`serviceAction task: ${t.guid}`)),
+    //   switchMap(task =>
+    //     this.api.getTaskByGuid(task.guid).pipe(
+    //       windowTime(1000),
+    //       tap(t => this.log(`task: ${task.guid}`, 'Request')),
+    //       retry(),
+    //       share(),
+    //       mergeAll(),
+    //       takeUntil(this.stopPolling),
+    //     )
+    //   )
+    // );
 
     task$.subscribe(t => {
-      if (this.successCondition(t)) {
+      if (this.errorCondition(t)) {
+        this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
+        onConnectionClosedAction(t.error);
+      } else if (this.successCondition(t)) {
         this.log(`successCallback task: ${t.guid}`, 'Subscription')
         successCallback(t);
         this.stopPolling.next();
@@ -78,6 +153,7 @@ export class LongRunningTaskService implements OnDestroy {
         onTaskUpdatedAction(t);
       }
     }, error => {
+      this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
       onConnectionClosedAction(error);
     });
   }
@@ -96,8 +172,14 @@ export class LongRunningTaskService implements OnDestroy {
           ? '<<<'
           : type === 'Subscription'
             ? '$$$'
-            : '';
+            : type === 'Pause'
+              ? '---'
+              : '';
     console.log(`[${formatDate(displayDate, 'mm:ss.SSS', 'en')}] ${prefix} LongRunningTaskService: ${message}`);
+  }
+
+  private errorCondition(t: ILongRunningTaskDto) {
+    return t.error !== null && t.error !== undefined;
   }
 
   private successCondition(t: ILongRunningTaskDto) {

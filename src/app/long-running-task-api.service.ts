@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { delay, tap } from 'rxjs/operators';
 import { ILongRunningTaskDto } from './long-running-task.model';
 
@@ -18,12 +18,13 @@ export class LongRunningTaskApiService {
     ebtity: '',
     errorMessage: '',
   };
-  task: ILongRunningTaskDto = this.copy<ILongRunningTaskDto>(this.defaultTask);
+  tasks: ILongRunningTaskDto[] = [];
 
   progressStep: number = 1;
   postTaskDelay = 0;
   getTaskByGuidDelay = 0;
   postCancelTaskDelay = 0;
+  shouldThrowError = false;
 
   public configure(progressStep: number = 0, postTaskDelay: number = 0, getTaskByGuidDelay: number = 0, postCancelTaskDelay: number = 0): void {
     if (progressStep > 0) { this.progressStep = progressStep; }
@@ -33,31 +34,46 @@ export class LongRunningTaskApiService {
   }
 
   public resetTask() {
-    this.task = this.copy(this.defaultTask);
+    this.tasks = [];
+  }
+
+  public throw() {
+    this.shouldThrowError = true;
   }
 
   public postTask(): Observable<ILongRunningTaskDto> {
-    this.task = this.copy(this.defaultTask);
+    const task = this.copy(this.defaultTask);
+    task.guid = Math.floor(Math.random()*999).toString();
+    this.tasks.push(task);
 
-    return of(this.task).pipe(delay(this.postTaskDelay));
+    return of(task).pipe(delay(this.postTaskDelay));
   }
 
   public getTaskByGuid(guid: string): Observable<ILongRunningTaskDto> {
-    if (this.task.status === 'Pending') {
-      this.task.progressInfo.progressValueInPercentage = this.task.progressInfo.progressValueInPercentage + this.progressStep >= 100 
+    const task = this.tasks.find(t => t.guid === guid);
+    if (task.status === 'Pending') {
+      task.progressInfo.progressValueInPercentage = task.progressInfo.progressValueInPercentage + this.progressStep >= 100 
         ? 100
-        : this.task.progressInfo.progressValueInPercentage + this.progressStep;
-      this.task.progressInfo.progressValueInPercentage = this.task.progressInfo.progressValueInPercentage;
+        : task.progressInfo.progressValueInPercentage + this.progressStep;
+      task.progressInfo.progressValueInPercentage = task.progressInfo.progressValueInPercentage;
     }
-    return of(this.task).pipe(delay(this.getTaskByGuidDelay), tap(() => {
-      if(this.task.progressInfo.progressValueInPercentage >= 100) {
-      this.task.status = 'Finished';
+
+    if(this.shouldThrowError) {
+      this.shouldThrowError = false;
+      return throwError({ httpStatusCode: 500, message: '200 OK ;)'})
+    }
+
+    return of(task).pipe(delay(this.getTaskByGuidDelay), tap(() => {
+      if(task.progressInfo.progressValueInPercentage >= 100) {
+        task.status = 'Finished';
       }
     }));
   }
 
   public postCancelTask(guid: string): Observable<void> {
-    return of(null).pipe(delay(this.postCancelTaskDelay), tap(() => this.task.status = 'Cancelled'));
+    const task = this.tasks.find(t => t.guid === guid);
+
+    return of(null).pipe(delay(this.postCancelTaskDelay), tap(() => task.status = 'Cancelled'));
   }
 
   private copy<T>(o: T): T {

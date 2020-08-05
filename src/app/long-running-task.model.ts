@@ -5,6 +5,7 @@ export interface ILongRunningTaskDto {
   creationTime: string;
   ebtity: any;
   errorMessage: string;
+  error: any;
 }
 
 export interface IProgressInfo {

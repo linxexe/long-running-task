@@ -27,9 +27,9 @@ export class AppComponent  {
   public onTaskFailedCounter = 0;
   public onConnectionClosedCounter = 0;
 
-  progressStep = "10";
+  progressStep = "1";
   postTaskDelay = "2000";
-  getTaskByGuidDelay = "900";
+  getTaskByGuidDelay = "300";
   postCancelTaskDelay = "5000";
 
   constructor(private taskService: LongRunningTaskService, private taskApi: LongRunningTaskApiService) {
@@ -46,6 +46,7 @@ export class AppComponent  {
   }
 
   public startTask() {
+    this.configure();
     this.message = 'CREATING TASK';
     this.taskService.beginCall(
       this.serviceAction.bind(this),
@@ -65,6 +66,10 @@ export class AppComponent  {
     this.onConnectionClosedCounter = 0;
     this.sampleTask$.next(null);
     this.taskService.resetTask();
+  }
+
+  public throw() {
+    this.taskApi.throw();
   }
 
   public cancelTask() {
@@ -96,9 +101,9 @@ export class AppComponent  {
     this.message = 'TASK FAILED';
   }
 
-  onConnectionClosedAction(task: ILongRunningTaskDto) {
+  onConnectionClosedAction(error: any) {
     this.onConnectionClosedCounter = this.onConnectionClosedCounter + 1;
-    this.sampleTask$.next(task);
-    this.message = 'CONNECTION CLOSED';
+    // this.sampleTask$.next(task);
+    this.message = 'CONNECTION CLOSED: ' + JSON.stringify(error);
   }
 }
