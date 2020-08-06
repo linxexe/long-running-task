@@ -99,9 +99,10 @@ export class LongRunningTaskService implements OnDestroy {
     // update$.subscribe(t => onTaskUpdatedAction(t));
 
     this.reset$.subscribe(() => stopPolling.next);
-
     task$.subscribe(t => {
-      if (this.errorCondition(t)) {
+      if(t === null || t === undefined) {
+        stopPolling.next();
+      } else if (this.errorCondition(t)) {
         this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
         onConnectionClosedAction(t.error);
       } else if (this.successCondition(t)) {
@@ -119,7 +120,7 @@ export class LongRunningTaskService implements OnDestroy {
         onTaskUpdatedAction(t);
       }
     }, error => {
-      this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
+      this.log(`onConnectionClosedAction error: ${JSON.stringify(error)}`, 'Subscription')
       onConnectionClosedAction(error);
     });
 
