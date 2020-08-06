@@ -86,42 +86,42 @@ export class LongRunningTaskService implements OnDestroy {
       takeUntil(stopPolling),
     );
 
-    const error$ = task$.pipe(filter(t => this.errorCondition(t)));
-    const success$ = task$.pipe(filter(t => this.successCondition(t), tap(() => stopPolling.next())));
-    const failed$ = task$.pipe(filter(t => this.failedCondition(t), tap(() => stopPolling.next())));
-    const cancelled$ = task$.pipe(filter(t => this.cancelledCondition(t), tap(() => stopPolling.next())));
-    const update$ = task$.pipe(filter(t => this.updateCondition(t)));
+    // const error$ = task$.pipe(filter(t => this.errorCondition(t)));
+    // const success$ = task$.pipe(filter(t => this.successCondition(t), tap(() => stopPolling.next())));
+    // const failed$ = task$.pipe(filter(t => this.failedCondition(t), tap(() => stopPolling.next())));
+    // const cancelled$ = task$.pipe(filter(t => this.cancelledCondition(t), tap(() => stopPolling.next())));
+    // const update$ = task$.pipe(filter(t => this.updateCondition(t)));
 
-    error$.subscribe(t => onConnectionClosedAction(t.error));
-    success$.subscribe(t => successCallback(t));
-    failed$.subscribe(t => onFailedAction(t));
-    cancelled$.subscribe(t => {});
-    update$.subscribe(t => onTaskUpdatedAction(t));
+    // error$.subscribe(t => onConnectionClosedAction(t.error));
+    // success$.subscribe(t => successCallback(t));
+    // failed$.subscribe(t => onFailedAction(t));
+    // cancelled$.subscribe(t => {});
+    // update$.subscribe(t => onTaskUpdatedAction(t));
 
     this.reset$.subscribe(() => stopPolling.next);
 
-    // task$.subscribe(t => {
-    //   if (this.errorCondition(t)) {
-    //     this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
-    //     onConnectionClosedAction(t.error);
-    //   } else if (this.successCondition(t)) {
-    //     this.log(`successCallback task: ${t.guid}`, 'Subscription')
-    //     successCallback(t);
-    //     stopPolling.next();
-    //   } else if (this.failedCondition(t)) {
-    //     this.log(`failedCondition task: ${t.guid}`, 'Subscription')
-    //     onFailedAction(t);
-    //     stopPolling.next();
-    //   } else if (this.cancelledCondition(t)) {
-    //     stopPolling.next();
-    //   } else {
-    //     this.log(`onTaskUpdatedAction task: ${t.guid}`, 'Subscription')
-    //     onTaskUpdatedAction(t);
-    //   }
-    // }, error => {
-    //   this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
-    //   onConnectionClosedAction(error);
-    // });
+    task$.subscribe(t => {
+      if (this.errorCondition(t)) {
+        this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
+        onConnectionClosedAction(t.error);
+      } else if (this.successCondition(t)) {
+        this.log(`successCallback task: ${t.guid}`, 'Subscription')
+        successCallback(t);
+        stopPolling.next();
+      } else if (this.failedCondition(t)) {
+        this.log(`failedCondition task: ${t.guid}`, 'Subscription')
+        onFailedAction(t);
+        stopPolling.next();
+      } else if (this.cancelledCondition(t)) {
+        stopPolling.next();
+      } else {
+        this.log(`onTaskUpdatedAction task: ${t.guid}`, 'Subscription')
+        onTaskUpdatedAction(t);
+      }
+    }, error => {
+      this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
+      onConnectionClosedAction(error);
+    });
 
   }
 
