@@ -2,6 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { formatDate } from '@angular/common';
 import { timer, Subject, BehaviorSubject, Observable, of, interval, throwError } from 'rxjs';
 import {
+  filter,
   switchMap,
   retry,
   share,
@@ -57,25 +58,6 @@ export class LongRunningTaskService implements OnDestroy {
     onConnectionClosedAction: (error: any) => any,
   ): void {
     this.log(`serviceAction task: ????`, 'Request');
-
-    // Final without logs
-    // const interval$ = new BehaviorSubject(1);
-    // let reuestTimestamp = 0;
-    // const task$ = serviceAction().pipe(
-    //   switchMap(task => of({})
-    //     .pipe(
-    //       withLatestFrom(interval$),
-    //       delayWhen(i => timer(i[1])),
-    //       tap(_ => reuestTimestamp = performance.now()),
-    //       mergeMap(i => this.api.getTaskByGuid(task.guid)
-    //         .pipe(tap(_ => this.calculateNextInterval(interval$, reuestTimestamp))),
-    //       ),
-    //       repeat(),
-    //     ),
-    //   ),
-    //   takeUntil(this.stopPolling),
-    // );
-
     
     // Repeat
     const stopPolling = new Subject();
@@ -104,62 +86,43 @@ export class LongRunningTaskService implements OnDestroy {
       takeUntil(stopPolling),
     );
 
-    // // Timer
-    // const task$ = serviceAction().pipe(
-    //   tap(t => this.log(`serviceAction task: ${t.guid}`, 'Response')),
-    //   switchMap(task =>
-    //     this.timer$.pipe(
-    //       switchMap(tm => {
-    //         this.log(`getTaskByGuid(${tm}) task: ${task.guid}`, 'Request');
-    //         return this.api.getTaskByGuid(task.guid).pipe(tap(t => this.log(`getTaskByGuid(${tm}) task: ${task.guid}`, 'Response')));
-    //       }),
-    //       retry(),
-    //       share(),
-    //       takeUntil(this.stopPolling),
-    //     )
-    //   )
-    // );
+    const error$ = task$.pipe(filter(t => this.errorCondition(t)));
+    const success$ = task$.pipe(filter(t => this.successCondition(t), tap(() => stopPolling.next())));
+    const failed$ = task$.pipe(filter(t => this.failedCondition(t), tap(() => stopPolling.next())));
+    const cancelled$ = task$.pipe(filter(t => this.cancelledCondition(t), tap(() => stopPolling.next())));
+    const update$ = task$.pipe(filter(t => this.updateCondition(t)));
 
-    // // Window
-    // const task$ = serviceAction().pipe(
-    //   tap(t => this.log(`serviceAction task: ${t.guid}`)),
-    //   switchMap(task =>
-    //     this.api.getTaskByGuid(task.guid).pipe(
-    //       windowTime(1000),
-    //       tap(t => this.log(`task: ${task.guid}`, 'Request')),
-    //       retry(),
-    //       share(),
-    //       mergeAll(),
-    //       takeUntil(this.stopPolling),
-    //     )
-    //   )
-    // );
-
-    task$.subscribe(t => {
-      if (this.errorCondition(t)) {
-        this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
-        onConnectionClosedAction(t.error);
-      } else if (this.successCondition(t)) {
-        this.log(`successCallback task: ${t.guid}`, 'Subscription')
-        successCallback(t);
-        stopPolling.next();
-      } else if (this.failedCondition(t)) {
-        this.log(`failedCondition task: ${t.guid}`, 'Subscription')
-        onFailedAction(t);
-        stopPolling.next();
-      } else if (this.cancelledCondition(t)) {
-        stopPolling.next();
-      } else {
-        this.log(`onTaskUpdatedAction task: ${t.guid}`, 'Subscription')
-        onTaskUpdatedAction(t);
-      }
-    }, error => {
-      this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
-      onConnectionClosedAction(error);
-    });
-
+    error$.subscribe(t => onConnectionClosedAction(t.error));
+    success$.subscribe(t => successCallback(t));
+    failed$.subscribe(t => onFailedAction(t));
+    cancelled$.subscribe(t => {});
+    update$.subscribe(t => onTaskUpdatedAction(t));
 
     this.reset$.subscribe(() => stopPolling.next);
+
+    // task$.subscribe(t => {
+    //   if (this.errorCondition(t)) {
+    //     this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
+    //     onConnectionClosedAction(t.error);
+    //   } else if (this.successCondition(t)) {
+    //     this.log(`successCallback task: ${t.guid}`, 'Subscription')
+    //     successCallback(t);
+    //     stopPolling.next();
+    //   } else if (this.failedCondition(t)) {
+    //     this.log(`failedCondition task: ${t.guid}`, 'Subscription')
+    //     onFailedAction(t);
+    //     stopPolling.next();
+    //   } else if (this.cancelledCondition(t)) {
+    //     stopPolling.next();
+    //   } else {
+    //     this.log(`onTaskUpdatedAction task: ${t.guid}`, 'Subscription')
+    //     onTaskUpdatedAction(t);
+    //   }
+    // }, error => {
+    //   this.log(`onConnectionClosedAction error: ${JSON.stringify(t.error)}`, 'Subscription')
+    //   onConnectionClosedAction(error);
+    // });
+
   }
 
   private log(message: string, type: string = null) {
@@ -198,7 +161,14 @@ export class LongRunningTaskService implements OnDestroy {
     return t.status === 'Failed';
   }
 
+  private updateCondition(t: ILongRunningTaskDto) {
+    return !this.errorCondition(t)
+        && !this.successCondition(t)
+        && !this.cancelledCondition(t)
+        && !this.failedCondition(t);
+  }
+
   public ngOnDestroy() {
-    this.stopPolling.next();
+    this.reset$.next();
   }
 }
