@@ -31,9 +31,9 @@ export class AppComponent  {
   public onConnectionClosedCounter = 0;
 
   progressStep = "1";
-  postTaskDelay = "2000";
+  postTaskDelay = "200";
   getTaskByGuidDelay = "300";
-  postCancelTaskDelay = "5000";
+  postCancelTaskDelay = "500";
 
   constructor(private taskService: LongRunningTaskService, private taskApi: LongRunningTaskApiService) {
     this.configure();

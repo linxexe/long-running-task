@@ -27,7 +27,7 @@ import { ILongRunningTaskDto } from './long-running-task.model';
 export class LongRunningTaskService implements OnDestroy {
 
   private readonly StartOffsetInMiliseconds = 250;
-  private readonly MaxIntervalBetweenCallsInMiliseconds = 5000;
+  private readonly MaxIntervalBetweenCallsInMiliseconds = 1000;
   // private readonly timer$ = timer(this.StartOffsetInMiliseconds, this.IntervalBetweenCallsInMiliseconds);
   private reset$ = new Subject();
   private startDate: Date = null;
