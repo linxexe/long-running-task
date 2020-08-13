@@ -63,7 +63,7 @@ export class LongRunningTaskApiService {
       return throwError({ httpStatusCode: 500, message: '200 OK ;)'})
     }
 
-    return of(task).pipe(delay(this.getTaskByGuidDelay), tap(() => {
+    return of(this.copy(task)).pipe(delay(this.getTaskByGuidDelay), tap(() => {
       if(task.progressInfo.progressValueInPercentage >= 100) {
         task.status = 'Finished';
       }
